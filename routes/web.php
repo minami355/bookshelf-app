@@ -1,7 +1,9 @@
-<?php
+<<?php
 
 use App\Http\Controllers\BookController;
+use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\ReviewLikeController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [BookController::class, 'index'])->name('home');
@@ -28,19 +30,23 @@ Route::middleware('auth')->group(function () {
         '/reviews/{review}',
         [ReviewController::class, 'destroy']
     )->name('reviews.destroy');
+
+    Route::get(
+        '/favorites',
+        [FavoriteController::class, 'index']
+    )->name('favorites.index');
+
+    Route::post(
+        '/books/{book}/favorite',
+        [FavoriteController::class, 'toggle']
+    )->name('favorites.toggle');
+
+    Route::post(
+        '/reviews/{review}/like',
+        [ReviewLikeController::class, 'toggle']
+    )->name('reviews.like');
 });
 
 // 未実装機能の一時ルート（各機能の実装時に置き換える）
 Route::redirect('/ranking', '/books')->name('ranking.index');
-Route::redirect('/favorites', '/books')->name('favorites.index');
 Route::redirect('/genres', '/books')->name('genres.index');
-
-// TODO: お気に入り機能の実装時にControllerのルートへ置き換える
-Route::post('/books/{book}/favorite', function ($book) {
-    return redirect()->route('books.show', $book);
-})->name('favorites.toggle');
-
-// TODO: レビューいいね機能の実装時にControllerのルートへ置き換える
-Route::post('/reviews/{review}/like', function () {
-    return back();
-})->middleware('auth')->name('reviews.like');
