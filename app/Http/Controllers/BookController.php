@@ -60,7 +60,7 @@ class BookController extends Controller
             'genres',
             'favorites',
             'reviews.user',
-            'reviews.likes',
+            'reviews.likedByUsers',
         ]);
 
         return view('books.show', compact('book'));
