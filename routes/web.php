@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\BookController;
 use App\Http\Controllers\FavoriteController;
+use App\Http\Controllers\GenreController;
 use App\Http\Controllers\RankingController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\ReviewLikeController;
@@ -53,5 +54,8 @@ Route::get(
     [RankingController::class, 'index']
 )->name('ranking.index');
 
-// 未実装機能の一時ルート（各機能の実装時に置き換える）
-Route::redirect('/genres', '/books')->name('genres.index');
+Route::middleware('auth')->group(function () {
+    // 既存の認証必須ルート
+
+    Route::resource('genres', GenreController::class);
+});
