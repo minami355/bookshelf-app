@@ -1,4 +1,4 @@
-<<?php
+<?php
 
 use App\Http\Controllers\BookController;
 use App\Http\Controllers\FavoriteController;
@@ -39,7 +39,7 @@ Route::middleware('auth')->group(function () {
     )->name('favorites.index');
 
     Route::post(
-        '/books/{book}/favorite',
+        '/books/{book}/favorites',
         [FavoriteController::class, 'toggle']
     )->name('favorites.toggle');
 

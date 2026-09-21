@@ -15,18 +15,6 @@ class ReviewController extends Controller
         StoreReviewRequest $request,
         Book $book
     ): RedirectResponse {
-        $alreadyReviewed = $book->reviews()
-            ->where('user_id', $request->user()->id)
-            ->exists();
-
-        if ($alreadyReviewed) {
-            return back()
-                ->withErrors([
-                    'rating' => 'この書籍にはすでにレビューを投稿しています。',
-                ])
-                ->withInput();
-        }
-
         $book->reviews()->create([
             'user_id' => $request->user()->id,
             'rating' => $request->validated('rating'),

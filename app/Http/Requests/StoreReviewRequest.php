@@ -19,6 +19,28 @@ class StoreReviewRequest extends FormRequest
         ];
     }
 
+    public function withValidator(
+        \Illuminate\Validation\Validator $validator
+    ): void {
+        $validator->after(function (\Illuminate\Validation\Validator $validator): void {
+            if ($validator->errors()->isNotEmpty()) {
+                return;
+            }
+
+            $alreadyReviewed = $this->route('book')
+                ->reviews()
+                ->where('user_id', $this->user()->id)
+                ->exists();
+
+            if ($alreadyReviewed) {
+                $validator->errors()->add(
+                    'rating',
+                    'この書籍にはすでにレビューを投稿しています。'
+                );
+            }
+        });
+    }
+
     public function messages(): array
     {
         return [
