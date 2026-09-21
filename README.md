@@ -1,66 +1,229 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# BookShelf 書籍レビューアプリ
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+書籍の登録・閲覧、レビュー、お気に入り、ジャンル管理、評価ランキングを扱うLaravel製Webアプリケーションです。
 
-## About Laravel
+現在は基本機能を実装しています。公開API、機能テスト、応用要件（検索・絞り込み・読書計画・通知など）は今後実装予定です。
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## 実装済み機能
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- 会員登録、ログイン、ログアウト
+- 書籍の一覧・詳細表示
+- 認証ユーザーによる書籍の登録・編集・削除
+- 書籍と複数ジャンルの紐づけ
+- レビューの投稿・編集・削除
+- 1ユーザーにつき1書籍1件までのレビュー制御
+- お気に入りの追加・解除と一覧表示
+- レビューへのいいねの追加・解除
+- ジャンルの一覧・詳細・登録・編集・削除
+- レビュー平均評価による上位10冊のランキング表示
+- 所有者だけが書籍・レビューを編集・削除できる認可
+- FormRequestによる入力検証と日本語エラーメッセージ
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## 未実装
 
-## Learning Laravel
+- 公開API（書籍の一覧・詳細・登録・更新・削除）
+- 公開APIのSanctum認証
+- 機能テスト・単体テストの拡充
+- キーワード検索、ジャンル絞り込み、並び替え
+- ISBNによる書籍情報取得
+- マイ読書レポート
+- 読書計画・通知・日次バッチ処理
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## 使用技術
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+| 分類 | 技術 |
+|---|---|
+| バックエンド | PHP 8.5 / Laravel 10.50.3 |
+| 認証 | Laravel Fortify |
+| データベース | MySQL 8.4 |
+| フロントエンド | Blade / Vite 5 / Tailwind CSS 3.4 / Alpine.js |
+| 開発環境 | Docker / Docker Compose / Laravel Sail |
+| DB管理 | phpMyAdmin |
+| コード整形 | Laravel Pint |
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## ER図
 
-## Laravel Sponsors
+```mermaid
+erDiagram
+    users ||--o{ books : creates
+    users ||--o{ reviews : posts
+    users ||--o{ favorites : adds
+    users ||--o{ review_likes : adds
+    books ||--o{ reviews : receives
+    books ||--o{ favorites : receives
+    books ||--o{ book_genre : categorized_as
+    genres ||--o{ book_genre : contains
+    reviews ||--o{ review_likes : receives
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+    users {
+        bigint id PK
+        varchar name
+        varchar email UK
+        varchar password
+        timestamp created_at
+        timestamp updated_at
+    }
 
-### Premium Partners
+    books {
+        bigint id PK
+        bigint user_id FK
+        varchar title
+        varchar author
+        varchar isbn UK
+        date published_date
+        text description
+        varchar image_url
+        timestamp created_at
+        timestamp updated_at
+    }
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+    genres {
+        bigint id PK
+        varchar name UK
+        timestamp created_at
+        timestamp updated_at
+    }
 
-## Contributing
+    book_genre {
+        bigint id PK
+        bigint book_id FK
+        bigint genre_id FK
+        timestamp created_at
+        timestamp updated_at
+    }
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+    reviews {
+        bigint id PK
+        bigint user_id FK
+        bigint book_id FK
+        tinyint rating
+        text comment
+        timestamp created_at
+        timestamp updated_at
+    }
 
-## Code of Conduct
+    favorites {
+        bigint id PK
+        bigint user_id FK
+        bigint book_id FK
+        timestamp created_at
+        timestamp updated_at
+    }
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+    review_likes {
+        bigint id PK
+        bigint user_id FK
+        bigint review_id FK
+        timestamp created_at
+        timestamp updated_at
+    }
+```
 
-## Security Vulnerabilities
+複合ユニーク制約は次のとおりです。
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+- `book_genre`: `book_id`, `genre_id`
+- `reviews`: `user_id`, `book_id`
+- `favorites`: `user_id`, `book_id`
+- `review_likes`: `user_id`, `review_id`
 
-## License
+## 環境構築
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Docker、Docker Composeが利用できる環境を前提とします。
+
+```bash
+git clone <repository-url>
+cd bookshelf-app
+cp .env.example .env
+```
+
+`.env` のデータベース設定を次のように変更します。
+
+```dotenv
+DB_CONNECTION=mysql
+DB_HOST=mysql
+DB_PORT=3306
+DB_DATABASE=laravel
+DB_USERNAME=sail
+DB_PASSWORD=password
+```
+
+Docker経由で依存パッケージを準備した後、Sailを起動します。
+
+```bash
+docker run --rm \
+    -u "$(id -u):$(id -g)" \
+    -v "$(pwd):/var/www/html" \
+    -w /var/www/html \
+    laravelsail/php82-composer:latest \
+    composer install --ignore-platform-reqs
+./vendor/bin/sail up -d
+./vendor/bin/sail artisan key:generate
+./vendor/bin/sail npm install
+./vendor/bin/sail npm run dev
+```
+
+別のターミナルで、テーブル作成と初期データ投入を実行します。
+
+```bash
+./vendor/bin/sail artisan migrate --seed
+```
+
+既存のデータベースを初期化して作り直す場合は、次のコマンドを使用します。この操作は既存データを削除します。
+
+```bash
+./vendor/bin/sail artisan migrate:fresh --seed
+```
+
+## URL
+
+| 用途 | URL |
+|---|---|
+| アプリケーション | http://localhost |
+| phpMyAdmin | http://localhost:8080 |
+
+## 初期ユーザー
+
+`./vendor/bin/sail artisan migrate --seed` の実行後、以下のユーザーでログインできます。パスワードは全ユーザー共通で `password` です。
+
+| 名前 | メールアドレス |
+|---|---|
+| 山田太郎 | yamada@example.com |
+| 鈴木花子 | suzuki@example.com |
+| 田中一郎 | tanaka@example.com |
+| 佐藤美咲 | sato@example.com |
+| 高橋健太 | takahashi@example.com |
+
+## Webルート概要
+
+| 機能 | メソッド・パス |
+|---|---|
+| 書籍一覧 | `GET /`, `GET /books` |
+| 書籍詳細 | `GET /books/{book}` |
+| 書籍登録 | `GET /books/create`, `POST /books` |
+| 書籍編集・削除 | `GET /books/{book}/edit`, `PUT /books/{book}`, `DELETE /books/{book}` |
+| レビュー投稿 | `POST /books/{book}/reviews` |
+| レビュー編集・削除 | `GET /reviews/{review}/edit`, `PUT /reviews/{review}`, `DELETE /reviews/{review}` |
+| お気に入り | `GET /favorites`, `POST /books/{book}/favorites` |
+| レビューいいね | `POST /reviews/{review}/like` |
+| ジャンル管理 | `/genres` 以下のリソースルート |
+| ランキング | `GET /ranking` |
+
+## 公開API
+
+書籍を扱う公開APIは未実装です。実装後、この欄にメソッド・パス・概要を追記します。
+
+## コード整形
+
+```bash
+./vendor/bin/sail pint --test
+```
+
+自動整形を行う場合は次を実行します。
+
+```bash
+./vendor/bin/sail pint
+```
+
+## 作成者
+
+南 雄大

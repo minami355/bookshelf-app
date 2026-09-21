@@ -75,6 +75,10 @@ return [
 
     'home' => '/',
 
+    'redirects' => [
+        'logout' => '/login',
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Fortify Routes Prefix / Subdomain
