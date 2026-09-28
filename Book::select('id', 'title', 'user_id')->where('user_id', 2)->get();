@@ -1,0 +1,39 @@
+[90m= [39m[34;4mIlluminate\Database\Eloquent\Collection[39;24m {#8117
+    [34mall[39m: [
+      [34;4mApp\Models\User[39;24m {#8115
+        [34mid[39m: [35m1[39m,
+        [34mname[39m: [32m"[39m[32m山田太郎[39m[32m"[39m,
+        [34memail[39m: [32m"[39m[32myamada@example.com[39m[32m"[39m,
+      },
+      [34;4mApp\Models\User[39;24m {#8114
+        [34mid[39m: [35m2[39m,
+        [34mname[39m: [32m"[39m[32m鈴木花子[39m[32m"[39m,
+        [34memail[39m: [32m"[39m[32msuzuki@example.com[39m[32m"[39m,
+      },
+      [34;4mApp\Models\User[39;24m {#8113
+        [34mid[39m: [35m3[39m,
+        [34mname[39m: [32m"[39m[32m田中一郎[39m[32m"[39m,
+        [34memail[39m: [32m"[39m[32mtanaka@example.com[39m[32m"[39m,
+      },
+      [34;4mApp\Models\User[39;24m {#8112
+        [34mid[39m: [35m4[39m,
+        [34mname[39m: [32m"[39m[32m佐藤美咲[39m[32m"[39m,
+        [34memail[39m: [32m"[39m[32msato@example.com[39m[32m"[39m,
+      },
+      [34;4mApp\Models\User[39;24m {#8111
+        [34mid[39m: [35m5[39m,
+        [34mname[39m: [32m"[39m[32m高橋健太[39m[32m"[39m,
+        [34memail[39m: [32m"[39m[32mtakahashi@example.com[39m[32m"[39m,
+      },
+      [34;4mApp\Models\User[39;24m {#8110
+        [34mid[39m: [35m6[39m,
+        [34mname[39m: [32m"[39m[32mレビューテスト[39m[32m"[39m,
+        [34memail[39m: [32m"[39m[32mreview-test@example.com[39m[32m"[39m,
+      },
+      [34;4mApp\Models\User[39;24m {#8109
+        [34mid[39m: [35m7[39m,
+        [34mname[39m: [32m"[39m[32mレビューテスト2[39m[32m"[39m,
+        [34memail[39m: [32m"[39m[32mreview-test2@example.com[39m[32m"[39m,
+      },
+    ],
+  }
