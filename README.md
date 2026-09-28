@@ -40,7 +40,11 @@
 | DB管理 | phpMyAdmin |
 | コード整形 | Laravel Pint |
 
-## ER図
+## 応用フェーズ移行準備
+
+以下の応用ER図は設計上の構成であり、追加テーブルを実装済みという意味ではありません。
+
+## 基本機能のER図
 
 ```mermaid
 erDiagram
@@ -124,6 +128,65 @@ erDiagram
 - `reviews`: `user_id`, `book_id`
 - `favorites`: `user_id`, `book_id`
 - `review_likes`: `user_id`, `review_id`
+
+## 応用機能のER図（設計）
+
+既存の基本テーブルに以下の関連とテーブルを追加します。books.isbn・published_dateはNULL許可へ変更します。
+
+```mermaid
+erDiagram
+    users ||--o{ books : creates
+    users ||--o{ reviews : posts
+    users ||--o{ favorites : adds
+    users ||--o{ review_likes : adds
+    books ||--o{ reviews : receives
+    books ||--o{ favorites : receives
+    books ||--o{ book_genre : categorized_as
+    genres ||--o{ book_genre : contains
+    reviews ||--o{ review_likes : receives
+    users ||--o{ reading_plans : owns
+    books ||--o{ reading_plans : planned_for
+    users ||..o{ notifications : polymorphic_recipient
+    reading_plans ||..o{ notifications : referenced_in_json
+    users ||..o{ personal_access_tokens : polymorphic_owner
+
+    reading_plans {
+        bigint id PK
+        bigint user_id FK
+        bigint book_id FK
+        date target_date
+        enum status "default in_progress"
+        timestamp completed_at "nullable"
+        timestamp created_at "nullable"
+        timestamp updated_at "nullable"
+    }
+
+    notifications {
+        uuid id PK
+        varchar type
+        varchar notifiable_type
+        bigint notifiable_id
+        text data "JSON"
+        timestamp read_at "nullable"
+        timestamp created_at "nullable"
+        timestamp updated_at "nullable"
+    }
+
+    personal_access_tokens {
+        bigint id PK
+        varchar tokenable_type
+        bigint tokenable_id
+        varchar name
+        varchar token UK
+        text abilities "nullable"
+        timestamp last_used_at "nullable"
+        timestamp expires_at "nullable"
+        timestamp created_at "nullable"
+        timestamp updated_at "nullable"
+    }
+```
+
+破線は通常の外部キーを設定しない関連を表します。notificationsはLaravelのポリモーフィック関連、計画IDはdata内の論理参照です。計画と関連通知の削除はアプリケーションの同一トランザクションで処理します。personal_access_tokensは既存テーブルです。
 
 ## 環境構築
 
@@ -250,7 +313,7 @@ docker run --rm \
 ./vendor/bin/sail artisan test --coverage
 ```
 
-現在の基本機能テストは39件、258アサーションが成功し、テストカバレッジは91.3%です。
+2026-09-28の再検証では、基本テストは41件・258アサーションすべて成功しました（ExampleTest 2件を含む）。Advanced Blade統合時の画面エラーは解消済みです。Viteビルドも成功しています。カバレッジは今回再測定していません。
 
 ## コード整形
 
