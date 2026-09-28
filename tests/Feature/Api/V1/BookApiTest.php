@@ -130,7 +130,8 @@ class BookApiTest extends TestCase
         $firstGenre = Genre::factory()->create();
         $secondGenre = Genre::factory()->create();
 
-        $createResponse = $this->postJson('/api/v1/books', $this->payload($owner, $firstGenre));
+        $this->withToken($owner->createToken('test')->plainTextToken);
+        $createResponse = $this->postJson('/api/v1/books', $this->payload($attemptedNewOwner, $firstGenre));
         $createResponse->assertCreated()->assertJsonPath('data.title', 'APIテスト書籍');
         $book = Book::query()->where('isbn', '9781234567890')->firstOrFail();
         $this->assertDatabaseHas('book_genre', ['book_id' => $book->id, 'genre_id' => $firstGenre->id]);
@@ -159,11 +160,12 @@ class BookApiTest extends TestCase
     {
         $user = User::factory()->create();
         $genre = Genre::factory()->create();
-        $book = Book::factory()->create(['isbn' => '9781234567890']);
+        $book = Book::factory()->for($user)->create(['isbn' => '9781234567890']);
+        $this->withToken($user->createToken('test')->plainTextToken);
 
         $this->postJson('/api/v1/books', [])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['user_id', 'title', 'author', 'isbn', 'published_date', 'genre_ids'])
+            ->assertJsonValidationErrors(['title', 'author', 'genre_ids'])
             ->assertJsonPath('errors.title.0', 'タイトルは必須です。');
 
         $this->putJson("/api/v1/books/{$book->id}", $this->payload($user, $genre, ['isbn' => '123']))
