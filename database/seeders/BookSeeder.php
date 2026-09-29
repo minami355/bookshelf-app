@@ -10,7 +10,7 @@ class BookSeeder extends Seeder
 {
     public function run(): void
     {
-        $user = User::first();
+        $users = User::all();
 
         $books = [
             [
@@ -110,7 +110,7 @@ class BookSeeder extends Seeder
             $bookData['image_url'] =
                 'https://placehold.co/200x300/e2e8f0/475569?text='.($index + 1);
 
-            $book = $user->books()->firstOrCreate(
+            $book = $users->random()->books()->firstOrCreate(
                 ['isbn' => $bookData['isbn']],
                 $bookData
             );

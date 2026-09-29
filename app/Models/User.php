@@ -65,4 +65,9 @@ class User extends Authenticatable
             'review_id'
         )->withTimestamps();
     }
+
+    public function readingPlans(): HasMany
+    {
+        return $this->hasMany(ReadingPlan::class);
+    }
 }

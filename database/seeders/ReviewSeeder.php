@@ -12,35 +12,18 @@ class ReviewSeeder extends Seeder
     public function run(): void
     {
         $users = User::all();
-        $books = Book::all();
-
-        // 各書籍2〜4件、合計32件
-        $reviewCounts = [2, 3, 4, 2, 3, 4, 2, 3, 4, 2, 3];
-
         $comments = [
-            '物語の展開が面白く、最後まで楽しめました。',
-            '内容が分かりやすく、実生活でも役立つ一冊でした。',
-            '新しい知識を得られて、とても勉強になりました。',
-            '具体例が豊富で、内容を理解しやすかったです。',
-            '何度も読み返したくなる、おすすめの一冊です。',
+            5 => ['素晴らしい本でした！', '人生が変わりました。', '何度も読み返しています。'],
+            4 => ['とても参考になりました。', '読みやすくておすすめです。', '期待通りの内容でした。'],
+            3 => ['普通でした。', '可もなく不可もなく。', '期待したほどではなかった。'],
+            2 => ['少し期待外れでした。', '内容が薄い印象。', 'もう少し深掘りしてほしかった。'],
+            1 => ['残念ながら合いませんでした。', '期待と違いました。'],
         ];
-
-        foreach ($books as $bookIndex => $book) {
-            $reviewCount = $reviewCounts[$bookIndex];
-
-            for ($reviewIndex = 0; $reviewIndex < $reviewCount; $reviewIndex++) {
-                $user = $users[
-                    ($bookIndex + $reviewIndex) % $users->count()
-                ];
-
-                Review::create([
-                    'user_id' => $user->id,
-                    'book_id' => $book->id,
-                    'rating' => 3 + (($bookIndex + $reviewIndex) % 3),
-                    'comment' => $comments[
-                        ($bookIndex + $reviewIndex) % count($comments)
-                    ],
-                ]);
+        foreach (Book::all() as $book) {
+            $reviewCount = rand(2, 4);
+            foreach ($users->random($reviewCount) as $user) {
+                $rating = rand(1, 5);
+                Review::create(['user_id' => $user->id, 'book_id' => $book->id, 'rating' => $rating, 'comment' => $comments[$rating][array_rand($comments[$rating])]]);
             }
         }
     }
