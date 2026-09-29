@@ -24,6 +24,9 @@
                 </a>
             </div>
 
+            @error('status')
+                <p class="text-red-600 mb-4">{{ $message }}</p>
+            @enderror
             @if(session('success'))
                 <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
                     {{ session('success') }}
@@ -82,6 +85,7 @@
                                 @endforeach
                             </tbody>
                         </table>
+                        <div class="mt-4">{{ $readingPlans->links() }}</div>
                     @endif
                 </div>
             </div>
