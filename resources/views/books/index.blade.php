@@ -19,6 +19,14 @@
                 </div>
             @endif
 
+            @if($errors->any())
+                <div class="bg-red-100 text-red-700 p-4 rounded mb-4" role="alert">
+                    @foreach($errors->all() as $error)
+                        <p>{{ $error }}</p>
+                    @endforeach
+                </div>
+            @endif
+
             @isset($genres)
             <!-- 検索フォーム -->
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">

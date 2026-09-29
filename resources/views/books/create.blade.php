@@ -65,8 +65,8 @@
             errorEl.classList.add('hidden');
             successEl.classList.add('hidden');
 
-            if (isbn.length !== 13) {
-                errorEl.textContent = 'ISBNは13桁で入力してください。';
+            if (!/^[0-9]{13}$/.test(isbn)) {
+                errorEl.textContent = 'ISBNは13桁の数字で入力してください。';
                 errorEl.classList.remove('hidden');
                 return;
             }
@@ -75,29 +75,24 @@
             labelEl.textContent = '検索中...';
 
             try {
-                const response = await fetch(`/books/isbn/${isbn}`, {
+                const response = await fetch(`/books/isbn/${encodeURIComponent(isbn)}`, {
                     headers: {
                         'Accept': 'application/json',
                     },
                 });
                 const data = await response.json();
 
-                if (data.error) {
-                    errorEl.textContent = data.error;
+                if (!response.ok) {
+                    errorEl.textContent = data.error || data.message || '書籍情報を取得できませんでした。';
                     errorEl.classList.remove('hidden');
                 } else {
-                    document.getElementById('title').value = data.title || '';
-                    document.getElementById('author').value = data.author || '';
-                    document.getElementById('isbn').value = isbn;
-                    document.getElementById('description').value = data.description || '';
-                    document.getElementById('image_url').value = data.image_url || '';
-
-                    if (data.published_date) {
-                        const date = new Date(data.published_date);
-                        if (!isNaN(date)) {
-                            document.getElementById('published_date').value = date.toISOString().split('T')[0];
+                    // Keep manually entered values when the API has no usable value.
+                    for (const field of ['title', 'author', 'published_date', 'description', 'image_url']) {
+                        if (typeof data[field] === 'string' && data[field] !== '') {
+                            document.getElementById(field).value = data[field];
                         }
                     }
+                    document.getElementById('isbn').value = isbn;
 
                     successEl.textContent = '書籍情報を取得しました。';
                     successEl.classList.remove('hidden');
