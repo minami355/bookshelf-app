@@ -449,6 +449,26 @@ ISBNフォームのJavaScriptテストは次のコマンドで実行します。
 
 2026-09-29のIssue #11実装後、基本機能・応用API・Web検索・ISBN検索を含むPHPテスト全59件・413アサーションが成功しました（SQLiteインメモリDB）。Google Books APIはHTTPモックで正常応答・該当なし・通信失敗を検証しています。フォーム反映のJavaScriptテスト3件、Pintによる変更PHPファイルの整形確認、Viteビルドも成功しました。実APIとの疎通、開発用MySQLの変更、カバレッジ測定は今回行っていません。
 
+### 応用機能テスト（2026-09-30）
+
+要件シートとタスクの順序に沿い、既存テストの確認と不足ケースの追加を行いました。
+
+| 順序 | タスク | 対応するFeature Test |
+|---|---|---|
+| 1 | Sanctumトークン認証 | `Api/V1/ApiAuthenticationTest.php`：公開GET、未認証401、トークン発行・BearerでCRUD・失効後の拒否 |
+| 2 | 認証付き書籍CRUD API | `Api/V1/BookApiTest.php`：201・200・204、JSON、DB保存・更新・削除、入力不正422 |
+| 3 | APIの認可・BookPolicy | `Api/V1/ApiAuthenticationTest.php`：所有者以外403とデータ保持、存在しない書籍404。Web側は`BookCrudTest.php`・`BookAccessTest.php`で検証 |
+| 4 | 検索・絞り込み・ソート | `BookSearchTest.php`：タイトル・著者の部分一致、ジャンル、複合条件、該当なし、2ページ目の条件保持、4種類の順序、同評価・レビューなし・不正sort |
+| 5 | Google Books API・ISBN検索 | `IsbnBookTest.php`：Http::fake()による取得内容、422・404・502、検索のみではDB保存しないこと |
+| 6 | マイ読書レポート | `ReadingReportTest.php`：本人の集計、冊数・件数・平均・評価分布、書籍とジャンルの上位5件、データなし。月別集計は対象外 |
+| 7 | 読書計画CRUD・Enum・Policy | `ReadingPlanTest.php`：各状態の絞り込み、重複制限と再登録、読了日時、所有者制限、期日変更、過去日拒否、completedの編集・更新403 |
+| 8 | リマインダーCommand・通知 | `ReadingPlanTest.php`：毎日20:00 Asia/Tokyoの設定、失効後の通知判定、3種類の通知、対象外、本人の一覧・既読・他人の通知403 |
+| 9 | 状態遷移・重複通知・全体テスト | `ReadingPlanTest.php`：当日・未来日・completed・expiredの保持、再実行時の重複防止、計画削除失敗時の関連通知ロールバック。基本機能を含む全テストを実行 |
+
+他人の通知を既読にする操作は要件に合わせて403へ修正しました。存在しない通知は404です。
+
+検証結果：PHP **81件・600アサーション成功**、ISBNフォームのJavaScript **3件成功**。変更したPHPファイルはPintで整形しました。PHPテストはSQLiteインメモリDBを使用し、Google Books APIへの実通信は行っていません。Schedulerは設定をテストしており、常駐プロセスの稼働確認とは別です。今回、Bladeファイル・開発用DBは変更していません。
+
 ## コード整形
 
 ```bash

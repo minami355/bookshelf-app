@@ -127,4 +127,28 @@ class ApiAuthenticationTest extends TestCase
             ->assertJsonValidationErrors(['published_date', 'image_url', 'genre_ids.0'])
             ->assertJsonMissingValidationErrors('isbn');
     }
+
+    public function test_issued_bearer_token_allows_crud_then_revocation_denies_access(): void
+    {
+        $user = User::factory()->create(['password' => Hash::make('password123')]);
+        $genre = Genre::factory()->create();
+        $token = $this->postJson('/api/v1/tokens', [
+            'email' => $user->email, 'password' => 'password123', 'device_name' => 'integration',
+        ])->assertOk()->json('token');
+        $this->withToken($token);
+        $payload = ['title' => '作成書籍', 'author' => '著者', 'genre_ids' => [$genre->id]];
+        $id = $this->postJson('/api/v1/books', $payload)->assertCreated()
+            ->assertJsonPath('data.title', '作成書籍')->assertJsonPath('data.author', '著者')
+            ->assertJsonPath('data.genres.0.id', $genre->id)->json('data.id');
+        $this->assertDatabaseHas('books', ['id' => $id, 'title' => '作成書籍', 'user_id' => $user->id]);
+        $payload['title'] = '更新書籍';
+        $this->putJson('/api/v1/books/'.$id, $payload)->assertOk()->assertJsonPath('data.title', '更新書籍');
+        $this->assertDatabaseHas('books', ['id' => $id, 'title' => '更新書籍']);
+        $this->deleteJson('/api/v1/books/'.$id)->assertNoContent();
+        $this->assertDatabaseMissing('books', ['id' => $id]);
+        $this->deleteJson('/api/v1/tokens/current')->assertNoContent();
+        $this->app['auth']->forgetGuards();
+        $this->postJson('/api/v1/books', $payload)->assertUnauthorized();
+        $this->assertDatabaseCount('books', 0);
+    }
 }

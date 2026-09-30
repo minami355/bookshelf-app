@@ -30,7 +30,7 @@ class ReadingPlanTest extends TestCase
 
     private function plan(User $user, string $status = 'in_progress', int $days = 0, ?Book $book = null): ReadingPlan
     {
-        return $user->readingPlans()->create(['book_id' => ($book ?? Book::factory()->create())->id, 'target_date' => Carbon::today('Asia/Tokyo')->addDays($days), 'status' => $status]);
+        return $user->readingPlans()->create(['book_id' => ($book ?? Book::factory()->create())->id, 'target_date' => Carbon::today('Asia/Tokyo')->addDays($days), 'status' => $status])->refresh();
     }
 
     public function test_guest_routes_require_login(): void
@@ -157,7 +157,8 @@ class ReadingPlanTest extends TestCase
         $this->travel(1)->hours();
         $this->post('/notifications/'.$notification->id.'/read')->assertRedirect('/notifications');
         $this->assertTrue($readAt->equalTo($notification->fresh()->read_at));
-        $this->post('/notifications/'.$other->notifications()->first()->id.'/read')->assertNotFound();
+        $this->post('/notifications/'.$other->notifications()->first()->id.'/read')->assertForbidden();
+        $this->assertNull($other->notifications()->first()->read_at);
     }
 
     public function test_schedule_and_seed_scenarios(): void
@@ -170,8 +171,105 @@ class ReadingPlanTest extends TestCase
         $this->artisan('reading-plans:remind')->assertSuccessful();
         $this->assertDatabaseCount('notifications', 3);
         $events = app(Schedule::class)->events();
-        $event = collect($events)->first(fn ($event) => str_contains($event->command,'reading-plans:remind'));
-        $this->assertSame('0 20 * * *',$event->expression);
-        $this->assertSame('Asia/Tokyo',$event->timezone);
+        $event = collect($events)->first(fn ($event) => str_contains($event->command, 'reading-plans:remind'));
+        $this->assertSame('0 20 * * *', $event->expression);
+        $this->assertSame('Asia/Tokyo', $event->timezone);
+    }
+
+    public function test_all_status_filters_and_completed_reregistration_are_user_scoped(): void
+    {
+        $user = User::factory()->create();
+        $other = User::factory()->create();
+        $this->actingAs($user);
+        foreach (ReadingPlanStatus::cases() as $status) {
+            $plan = $this->plan($user, $status->value);
+            $this->plan($other, $status->value, 0, $plan->book);
+            $this->get('/reading-plans?status='.$status->value)->assertOk()
+                ->assertViewHas('readingPlans', fn ($plans) => $plans->modelKeys() === [$plan->id]);
+        }
+        $this->get('/reading-plans')->assertOk()->assertViewHas('readingPlans', fn ($plans) => $plans->total() === 3);
+        $completed = $user->readingPlans()->where('status', 'completed')->firstOrFail();
+        $this->post('/reading-plans', ['book_id' => $completed->book_id, 'target_date' => '2026-09-29'])->assertSessionHasNoErrors()->assertRedirect('/reading-plans');
+        $this->assertSame(2, $user->readingPlans()->where('book_id', $completed->book_id)->count());
+    }
+
+    public function test_past_date_update_preserves_plan_and_both_active_states_can_complete(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        foreach (['in_progress', 'expired'] as $status) {
+            $plan = $this->plan($user, $status);
+            $original = $plan->getRawOriginal();
+            $this->put('/reading-plans/'.$plan->id, ['target_date' => '2026-09-28'])->assertSessionHasErrors('target_date');
+            $this->assertSame($original, $plan->fresh()->getRawOriginal());
+            $this->post('/reading-plans/'.$plan->id.'/complete')->assertRedirect('/reading-plans');
+            $this->assertSame(ReadingPlanStatus::Completed, $plan->fresh()->status);
+            $this->assertTrue(now()->equalTo($plan->fresh()->completed_at));
+        }
+    }
+
+    public function test_auto_expiry_preserves_all_excluded_records(): void
+    {
+        $user = User::factory()->create();
+        $expired = $this->plan($user, 'in_progress', -1);
+        $unchanged = collect([
+            $this->plan($user, 'in_progress', 0),
+            $this->plan($user, 'in_progress', 1),
+            $this->plan($user, 'completed', -1),
+            $this->plan($user, 'expired', -1),
+        ]);
+        $this->travel(1)->hours();
+        $this->artisan('reading-plans:remind')->assertSuccessful();
+        $this->assertSame(ReadingPlanStatus::Expired, $expired->fresh()->status);
+        foreach ($unchanged as $plan) {
+            $this->assertSame($plan->getRawOriginal(), $plan->fresh()->getRawOriginal());
+        }
+    }
+
+    public function test_each_notification_has_correct_plan_timing_and_only_eligible_statuses(): void
+    {
+        $user = User::factory()->create();
+        $expected = [];
+        foreach ([3 => 'three_days_before', 0 => 'on_due_date', -3 => 'three_days_after'] as $days => $timing) {
+            $plan = $this->plan($user, $days < 0 ? 'expired' : 'in_progress', $days);
+            $expected[$plan->id] = $timing;
+            $this->plan($user, 'completed', $days);
+        }
+        $this->plan($user, 'expired', 3);
+        $this->plan($user, 'expired', 0);
+        $this->artisan('reading-plans:remind')->assertSuccessful();
+        $this->assertCount(3, $user->notifications);
+        foreach ($user->notifications as $notification) {
+            $this->assertSame($expected[$notification->data['reading_plan_id']], $notification->data['timing']);
+            $this->assertNotEmpty($notification->data['body']);
+            $this->assertSame(route('reading-plans.index'), $notification->data['url']);
+        }
+        $this->artisan('reading-plans:remind')->assertSuccessful();
+        $this->assertDatabaseCount('notifications', 3);
+    }
+
+    public function test_deletion_rolls_back_related_notifications_when_plan_deletion_fails(): void
+    {
+        $user = User::factory()->create();
+        $plan = $this->plan($user);
+        $user->notify(new ReadingPlanReminder($plan, 'on_due_date'));
+        $notification = $user->notifications()->firstOrFail();
+        // Fail after notification deletion to verify the actual database rollback.
+        $dispatcher = ReadingPlan::getEventDispatcher();
+        ReadingPlan::setEventDispatcher(clone $dispatcher);
+        ReadingPlan::deleting(function () {
+            throw new \RuntimeException('Simulated deletion failure');
+        });
+        $this->withoutExceptionHandling();
+        try {
+            $this->actingAs($user)->delete('/reading-plans/'.$plan->id);
+            $this->fail('Deletion should fail');
+        } catch (\RuntimeException $exception) {
+            $this->assertSame('Simulated deletion failure', $exception->getMessage());
+        } finally {
+            ReadingPlan::setEventDispatcher($dispatcher);
+        }
+        $this->assertDatabaseHas('reading_plans', ['id' => $plan->id]);
+        $this->assertDatabaseHas('notifications', ['id' => $notification->id]);
     }
 }

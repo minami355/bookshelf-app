@@ -90,4 +90,20 @@ class ReadingReportTest extends TestCase
         $this->assertSame([$ids[0], $ids[2], $ids[1], $ids[3], $ids[4]], $stats['genre_ratings']->pluck('id')->all());
         $this->assertEquals(2, $stats['genre_ratings'][1]['count']);
     }
+
+    public function test_distribution_covers_every_rating_and_genre_average_uses_own_reviews(): void
+    {
+        $user = User::factory()->create();
+        $genre = Genre::factory()->create();
+        foreach ([1, 2, 3, 4, 5, 5] as $rating) {
+            $review = Review::factory()->for($user)->create(['rating' => $rating]);
+            $review->book->genres()->attach($genre);
+            Review::factory()->for($review->book)->create(['rating' => 1]);
+        }
+        $stats = $this->actingAs($user)->get('/reports')->assertOk()->viewData('stats');
+        $this->assertSame([1, 1, 1, 1, 2], $stats['rating_distribution']->all());
+        $this->assertSame(['total_reviews' => 6, 'books_read' => 6, 'average_rating' => 3.3], $stats['summary']);
+        $this->assertEqualsWithDelta(20 / 6, $stats['genre_ratings'][0]['average_rating'], 0.00001);
+        $this->assertEquals(6, $stats['genre_ratings'][0]['count']);
+    }
 }

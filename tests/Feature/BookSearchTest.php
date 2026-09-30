@@ -71,4 +71,34 @@ class BookSearchTest extends TestCase
             ->assertRedirect('/books')->assertSessionHasErrors('genre_id');
         $this->get('/books')->assertOk()->assertSee('指定されたジャンルは存在しません。');
     }
+
+    public function test_individual_filters_and_second_page_results(): void
+    {
+        $genre = Genre::factory()->create();
+        $title = Book::factory()->create(['title' => '探すタイトル', 'author' => '著者A']);
+        $author = Book::factory()->create(['title' => '別タイトル', 'author' => '探す著者']);
+        $title->genres()->attach($genre);
+        foreach ([['keyword' => '探すタイトル'], ['keyword' => '探す著者'], ['genre_id' => $genre->id], ['keyword' => '存在しない語']] as $i => $query) {
+            $ids = [[$title->id], [$author->id], [$title->id], []][$i];
+            $this->get('/books?'.http_build_query($query))->assertOk()
+                ->assertViewHas('books', fn ($books) => $books->modelKeys() === $ids);
+        }
+        $books = Book::factory()->count(11)->sequence(fn ($sequence) => ['title' => sprintf('ページ対象%02d', $sequence->index)])->create();
+        $books->each(fn ($book) => $book->genres()->attach($genre));
+        $query = ['keyword' => 'ページ対象', 'genre_id' => $genre->id, 'sort' => 'title'];
+        $first = $this->get('/books?'.http_build_query($query))->assertOk()->viewData('books');
+        $second = $this->get($first->nextPageUrl())->assertOk()->viewData('books');
+        $this->assertSame([$books->last()->id], $second->modelKeys());
+        $this->assertSame(11, $second->total());
+    }
+
+    public function test_rating_sort_prioritizes_average_over_registration_date(): void
+    {
+        $high = Book::factory()->create(['created_at' => now()->subDays(2)]);
+        $low = Book::factory()->create(['created_at' => now()]);
+        Review::factory()->for($high)->create(['rating' => 5]);
+        Review::factory()->for($low)->create(['rating' => 2]);
+        $this->get('/books?sort=rating')->assertOk()
+            ->assertViewHas('books', fn ($books) => $books->modelKeys() === [$high->id, $low->id]);
+    }
 }

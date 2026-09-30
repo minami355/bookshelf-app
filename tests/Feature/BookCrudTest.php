@@ -90,19 +90,19 @@ class BookCrudTest extends TestCase
     {
         $owner = User::factory()->create();
         $other = User::factory()->create();
-        $book = Book::factory()->for($owner)->create();
+        $book = Book::factory()->for($owner)->create()->refresh();
 
         $this->actingAs($other)->get(route('books.edit', $book))->assertForbidden();
         $this->actingAs($other)->put(route('books.update', $book), $this->payload())->assertForbidden();
         $this->actingAs($other)->delete(route('books.destroy', $book))->assertForbidden();
-        $this->assertDatabaseHas('books', ['id' => $book->id]);
+        $this->assertSame($book->getRawOriginal(), $book->fresh()->getRawOriginal());
     }
 
     public function test_owner_can_delete_book_and_related_records_are_deleted(): void
     {
         $owner = User::factory()->create();
         $reviewer = User::factory()->create();
-        $book = Book::factory()->for($owner)->create();
+        $book = Book::factory()->for($owner)->create()->refresh();
         $genre = Genre::factory()->create();
         $book->genres()->attach($genre);
         $review = Review::factory()->for($reviewer)->for($book)->create();

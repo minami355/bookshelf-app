@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Notifications\DatabaseNotification;
 
 class NotificationController extends Controller
 {
@@ -13,7 +14,9 @@ class NotificationController extends Controller
 
     public function read(Request $request, string $id)
     {
-        $notification = $request->user()->notifications()->findOrFail($id);
+        $notification = DatabaseNotification::findOrFail($id);
+        abort_unless($notification->notifiable_type === $request->user()->getMorphClass()
+            && (string) $notification->notifiable_id === (string) $request->user()->getKey(), 403);
         $notification->markAsRead();
 
         return redirect()->route('notifications.index');
