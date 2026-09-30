@@ -141,7 +141,7 @@ class BookApiTest extends TestCase
             'isbn' => $book->isbn,
         ]));
         $updateResponse->assertOk()->assertJsonPath('data.title', '更新後API書籍');
-        $this->assertDatabaseHas('books', ['id' => $book->id, 'user_id' => $owner->id]);
+        $this->assertDatabaseHas('books', ['id' => $book->id, 'user_id' => $owner->id, 'title' => '更新後API書籍']);
         $this->assertDatabaseMissing('book_genre', ['book_id' => $book->id, 'genre_id' => $firstGenre->id]);
         $this->assertDatabaseHas('book_genre', ['book_id' => $book->id, 'genre_id' => $secondGenre->id]);
 
