@@ -198,7 +198,7 @@ cd bookshelf-app
 cp .env.example .env
 ```
 
-`.env` のデータベース設定を次のように変更します。
+`.env.example`にはSail用の次のデータベース設定が含まれています。コピー後の`.env`が同じ内容になっていることを確認してください。MySQL 8.4では`DB_USERNAME`に`root`を指定せず、Laravel接続用の一般ユーザーを使用します。
 
 ```dotenv
 DB_CONNECTION=mysql
@@ -228,11 +228,16 @@ echo 'alias sail="[ -f sail ] && bash sail || bash vendor/bin/sail"' >> ~/.zshrc
 source ~/.zshrc
 ```
 
-設定後、アプリケーションキーの生成とフロントエンドのセットアップを行います。
+設定後、アプリケーションキーの生成とフロントエンドのセットアップを行います。新規clone直後はViteのbuild成果物が存在しないため、Feature Testを実行する前に`npm run build`を実行してください。開発中にViteの開発サーバーを使用する場合は、別途`npm run dev`を起動します。
 
 ```bash
 sail artisan key:generate
 sail npm install
+sail npm run build
+```
+
+```bash
+# 開発中のみ（常駐プロセス）
 sail npm run dev
 ```
 
