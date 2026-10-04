@@ -7,11 +7,21 @@ use Illuminate\Validation\Rule;
 
 class UpdateBookRequest extends FormRequest
 {
+    /**
+     * リクエストの実行権限を判定する。
+     *
+     * @return bool 許可または条件成立ならtrue
+     */
     public function authorize(): bool
     {
         return $this->user()?->can('update', $this->route('book')) ?? false;
     }
 
+    /**
+     * 入力項目の検証ルールを返す。
+     *
+     * @return array 処理結果の配列
+     */
     public function rules(): array
     {
         return [
@@ -34,6 +44,11 @@ class UpdateBookRequest extends FormRequest
         ];
     }
 
+    /**
+     * 日本語の検証エラーメッセージを返す。
+     *
+     * @return array 処理結果の配列
+     */
     public function messages(): array
     {
         return [
