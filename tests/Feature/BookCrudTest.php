@@ -26,7 +26,7 @@ class BookCrudTest extends TestCase
             'published_date' => '2026-09-21',
             'description' => '説明文',
             'image_url' => 'https://example.com/book.jpg',
-            'genres' => [$genre->id],
+            'genre_ids' => [$genre->id],
         ], $overrides);
     }
 
@@ -41,7 +41,7 @@ class BookCrudTest extends TestCase
         $response->assertRedirect(route('books.show', $book))
             ->assertSessionHas('success', '書籍を登録しました。');
         $this->assertDatabaseHas('books', ['id' => $book->id, 'user_id' => $user->id]);
-        $this->assertDatabaseHas('book_genre', ['book_id' => $book->id, 'genre_id' => $payload['genres'][0]]);
+        $this->assertDatabaseHas('book_genre', ['book_id' => $book->id, 'genre_id' => $payload['genre_ids'][0]]);
         $this->get(route('books.show', $book))->assertOk()->assertSee('テスト書籍');
     }
 
@@ -55,11 +55,11 @@ class BookCrudTest extends TestCase
             'author' => '',
             'isbn' => '9781234567890',
             'published_date' => 'invalid',
-            'genres' => [],
+            'genre_ids' => [],
         ]);
 
         $response->assertRedirect(route('books.create'))
-            ->assertSessionHasErrors(['title', 'author', 'isbn', 'published_date', 'genres']);
+            ->assertSessionHasErrors(['title', 'author', 'isbn', 'published_date', 'genre_ids']);
         $this->assertSame('タイトルは必須です。', session('errors')->first('title'));
         $this->assertSame('このISBNはすでに登録されています。', session('errors')->first('isbn'));
     }
@@ -74,7 +74,7 @@ class BookCrudTest extends TestCase
         $payload = $this->payload([
             'title' => '更新後タイトル',
             'isbn' => $book->isbn,
-            'genres' => [$newGenre->id],
+            'genre_ids' => [$newGenre->id],
         ]);
 
         $this->actingAs($user)->put(route('books.update', $book), $payload)

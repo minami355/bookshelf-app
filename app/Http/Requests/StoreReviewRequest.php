@@ -3,14 +3,25 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 
 class StoreReviewRequest extends FormRequest
 {
+    /**
+     * リクエストの実行権限を判定する。
+     *
+     * @return bool 許可または条件成立ならtrue
+     */
     public function authorize(): bool
     {
         return true;
     }
 
+    /**
+     * 入力項目の検証ルールを返す。
+     *
+     * @return array 処理結果の配列
+     */
     public function rules(): array
     {
         return [
@@ -19,10 +30,16 @@ class StoreReviewRequest extends FormRequest
         ];
     }
 
+    /**
+     * 標準ルールに加えて重複などの整合性を検証する。
+     *
+     * @param  Validator  $validator  追加の検証を適用するバリデーター
+     * @return void 戻り値なし
+     */
     public function withValidator(
-        \Illuminate\Validation\Validator $validator
+        Validator $validator
     ): void {
-        $validator->after(function (\Illuminate\Validation\Validator $validator): void {
+        $validator->after(function (Validator $validator): void {
             if ($validator->errors()->isNotEmpty()) {
                 return;
             }
@@ -41,6 +58,11 @@ class StoreReviewRequest extends FormRequest
         });
     }
 
+    /**
+     * 日本語の検証エラーメッセージを返す。
+     *
+     * @return array 処理結果の配列
+     */
     public function messages(): array
     {
         return [

@@ -7,6 +7,12 @@ use RuntimeException;
 
 class GoogleBooksService
 {
+    /**
+     * Google Booksから書籍情報を取得し、利用可能な値を返す。
+     *
+     * @param  string  $isbn  検索対象の13桁ISBN
+     * @return ?array 書籍情報、見つからなければnull
+     */
     public function findByIsbn(string $isbn): ?array
     {
         $query = ['q' => 'isbn:'.$isbn, 'maxResults' => 1];
@@ -14,8 +20,10 @@ class GoogleBooksService
             $query['key'] = $key;
         }
 
-        $response = Http::acceptJson()->connectTimeout(3)->timeout(10)
-            ->get('https://www.googleapis.com/books/v1/volumes', $query);
+        $response = Http::acceptJson()
+            ->connectTimeout(config('services.google_books.connect_timeout'))
+            ->timeout(config('services.google_books.timeout'))
+            ->get(config('services.google_books.url'), $query);
         $response->throw();
 
         $body = $response->json();
@@ -30,7 +38,7 @@ class GoogleBooksService
             throw new RuntimeException('Missing Google Books volume information.');
         }
 
-        $authors = array_filter((array) ($info['authors'] ?? []), fn ($author) => is_string($author));
+        $authors = array_filter((array) ($info['authors'] ?? []), fn (mixed $author): bool => is_string($author));
         $image = $this->text($info['imageLinks']['thumbnail'] ?? $info['imageLinks']['smallThumbnail'] ?? null);
 
         return [
@@ -43,11 +51,23 @@ class GoogleBooksService
         ];
     }
 
+    /**
+     * 空でない文字列を返し、それ以外はnullにする。
+     *
+     * @param  mixed  $value  正規化する外部APIの値
+     * @return ?string 有効な文字列、該当しなければnull
+     */
     private function text(mixed $value): ?string
     {
         return is_string($value) && trim($value) !== '' ? $value : null;
     }
 
+    /**
+     * 年月日が揃った有効な日付だけを返す。
+     *
+     * @param  mixed  $value  正規化する外部APIの値
+     * @return ?string 有効な文字列、該当しなければnull
+     */
     private function date(mixed $value): ?string
     {
         // Do not invent a month or day when Google only supplies a year/month.

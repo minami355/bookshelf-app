@@ -7,11 +7,21 @@ use Illuminate\Validation\Rule;
 
 class StoreBookRequest extends FormRequest
 {
+    /**
+     * リクエストの実行権限を判定する。
+     *
+     * @return bool 許可または条件成立ならtrue
+     */
     public function authorize(): bool
     {
         return true;
     }
 
+    /**
+     * 入力項目の検証ルールを返す。
+     *
+     * @return array 処理結果の配列
+     */
     public function rules(): array
     {
         return [
@@ -25,8 +35,8 @@ class StoreBookRequest extends FormRequest
             'published_date' => ['nullable', 'date'],
             'description' => ['nullable', 'string'],
             'image_url' => ['nullable', 'url', 'max:255'],
-            'genres' => ['required', 'array', 'min:1'],
-            'genres.*' => [
+            'genre_ids' => ['required', 'array', 'min:1'],
+            'genre_ids.*' => [
                 'integer',
                 'distinct',
                 Rule::exists('genres', 'id'),
@@ -34,6 +44,11 @@ class StoreBookRequest extends FormRequest
         ];
     }
 
+    /**
+     * 日本語の検証エラーメッセージを返す。
+     *
+     * @return array 処理結果の配列
+     */
     public function messages(): array
     {
         return [
@@ -49,12 +64,12 @@ class StoreBookRequest extends FormRequest
             'description.string' => '説明は文字列で入力してください。',
             'image_url.url' => '画像URLは正しいURL形式で入力してください。',
             'image_url.max' => '画像URLは255文字以内で入力してください。',
-            'genres.required' => 'ジャンルを1つ以上選択してください。',
-            'genres.array' => 'ジャンルの入力形式が正しくありません。',
-            'genres.min' => 'ジャンルを1つ以上選択してください。',
-            'genres.*.integer' => 'ジャンルの入力形式が正しくありません。',
-            'genres.*.distinct' => '同じジャンルが重複しています。',
-            'genres.*.exists' => '選択されたジャンルは存在しません。',
+            'genre_ids.required' => 'ジャンルを1つ以上選択してください。',
+            'genre_ids.array' => 'ジャンルの入力形式が正しくありません。',
+            'genre_ids.min' => 'ジャンルを1つ以上選択してください。',
+            'genre_ids.*.integer' => 'ジャンルの入力形式が正しくありません。',
+            'genre_ids.*.distinct' => '同じジャンルが重複しています。',
+            'genre_ids.*.exists' => '選択されたジャンルは存在しません。',
         ];
     }
 }

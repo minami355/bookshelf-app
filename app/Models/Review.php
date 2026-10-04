@@ -23,21 +23,41 @@ class Review extends Model
         'rating' => 'integer',
     ];
 
+    /**
+     * 関連するユーザーのリレーションを定義する。
+     *
+     * @return BelongsTo 関連データを取得するリレーション
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * 関連する書籍のリレーションを定義する。
+     *
+     * @return BelongsTo 関連データを取得するリレーション
+     */
     public function book(): BelongsTo
     {
         return $this->belongsTo(Book::class);
     }
 
+    /**
+     * 関連するいいねのリレーションを定義する。
+     *
+     * @return HasMany 関連データを取得するリレーション
+     */
     public function likes(): HasMany
     {
         return $this->hasMany(ReviewLike::class);
     }
 
+    /**
+     * 関連するいいねしたユーザーのリレーションを定義する。
+     *
+     * @return BelongsToMany 関連データを取得するリレーション
+     */
     public function likedByUsers(): BelongsToMany
     {
         return $this->belongsToMany(

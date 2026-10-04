@@ -46,8 +46,45 @@ class ApiAuthenticationTest extends TestCase
             ])->assertUnauthorized()->assertExactJson(['message' => '認証情報が正しくありません。']);
         }
         $this->post('/api/v1/tokens', [])->assertUnprocessable()
-            ->assertJsonValidationErrors(['email', 'password', 'device_name']);
+            ->assertJsonValidationErrors(['email', 'password', 'device_name'])
+            ->assertJsonPath('errors.email.0', 'メールアドレスは必須です。')
+            ->assertJsonPath('errors.password.0', 'パスワードは必須です。')
+            ->assertJsonPath('errors.device_name.0', 'デバイス名は必須です。');
         $this->assertDatabaseCount('personal_access_tokens', 0);
+    }
+
+    public function test_invalid_token_input_returns_japanese_validation_errors(): void
+    {
+        $this->postJson('/api/v1/tokens', [
+            'email' => 'invalid', 'password' => ['invalid'], 'device_name' => ['invalid'],
+        ])->assertUnprocessable()
+            ->assertJsonPath('errors.email.0', 'メールアドレスは正しい形式で入力してください。')
+            ->assertJsonPath('errors.password.0', 'パスワードは文字列で入力してください。')
+            ->assertJsonPath('errors.device_name.0', 'デバイス名は文字列で入力してください。');
+        $this->assertDatabaseCount('personal_access_tokens', 0);
+    }
+
+    public function test_put_clears_omitted_optional_fields_and_preserves_owner(): void
+    {
+        $owner = User::factory()->create();
+        $book = Book::factory()->for($owner)->create([
+            'isbn' => '9781234567890', 'published_date' => '2026-09-28',
+            'description' => '説明', 'image_url' => 'https://example.com/book.jpg',
+        ]);
+        $genre = Genre::factory()->create();
+        $this->withToken($owner->createToken('test')->plainTextToken)
+            ->putJson("/api/v1/books/{$book->id}", [
+                'title' => '更新書籍', 'author' => '著者', 'genre_ids' => [$genre->id],
+                'user_id' => User::factory()->create()->id,
+            ])->assertOk()
+            ->assertJsonPath('data.isbn', null)
+            ->assertJsonPath('data.published_date', null)
+            ->assertJsonPath('data.description', null)
+            ->assertJsonPath('data.image_url', null);
+        $this->assertDatabaseHas('books', [
+            'id' => $book->id, 'user_id' => $owner->id, 'title' => '更新書籍',
+            'isbn' => null, 'published_date' => null, 'description' => null, 'image_url' => null,
+        ]);
     }
 
     public function test_all_write_endpoints_require_authentication_without_accept_header(): void

@@ -95,19 +95,19 @@
                 <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
                     @foreach($genres as $genre)
                         <label class="inline-flex items-center cursor-pointer hover:bg-gray-100 p-2 rounded">
-                            <input type="checkbox" name="genres[]" value="{{ $genre->id }}"
+                            <input type="checkbox" name="genre_ids[]" value="{{ $genre->id }}"
                                 class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500"
-                                @if(in_array($genre->id, old('genres', $bookGenreIds))) checked @endif>
+                                @if(in_array($genre->id, old('genre_ids', $bookGenreIds))) checked @endif>
                             <span class="ml-2 text-sm text-gray-700">{{ $genre->name }}</span>
                         </label>
                     @endforeach
                 </div>
             @endif
         </div>
-        @error('genres')
+        @error('genre_ids')
             <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
         @enderror
-        @error('genres.*')
+        @error('genre_ids.*')
             <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
         @enderror
     </div>

@@ -16,6 +16,9 @@ return [
 
     'google_books' => [
         'key' => env('GOOGLE_BOOKS_API_KEY'),
+        'url' => env('GOOGLE_BOOKS_URL', 'https://www.googleapis.com/books/v1/volumes'),
+        'connect_timeout' => (int) env('GOOGLE_BOOKS_CONNECT_TIMEOUT', 3),
+        'timeout' => (int) env('GOOGLE_BOOKS_TIMEOUT', 10),
     ],
 
     'mailgun' => [

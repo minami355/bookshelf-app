@@ -38,7 +38,7 @@ class IsbnBookTest extends TestCase
         Http::assertSent(fn ($request) => $request['q'] === 'isbn:9781234567890' && $request['key'] === 'test-key');
         $genre = Genre::factory()->create();
         $data['title'] = '編集済みタイトル';
-        $this->post('/books', $data + ['isbn' => '9781234567890', 'genres' => [$genre->id]])
+        $this->post('/books', $data + ['isbn' => '9781234567890', 'genre_ids' => [$genre->id]])
             ->assertSessionHasNoErrors()->assertRedirect();
         $this->assertDatabaseHas('books', ['title' => '編集済みタイトル', 'isbn' => '9781234567890']);
     }
@@ -100,7 +100,7 @@ class IsbnBookTest extends TestCase
     {
         $user = User::factory()->create();
         $genre = Genre::factory()->create();
-        $payload = ['title' => '手入力', 'author' => '著者', 'genres' => [$genre->id]];
+        $payload = ['title' => '手入力', 'author' => '著者', 'genre_ids' => [$genre->id]];
         $this->actingAs($user)->post('/books', $payload)->assertSessionHasNoErrors()->assertRedirect();
         $book = Book::firstOrFail();
         $this->assertNull($book->isbn);

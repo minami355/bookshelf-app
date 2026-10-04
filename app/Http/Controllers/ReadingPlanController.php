@@ -2,93 +2,120 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\ReadingPlanStatus;
 use App\Http\Requests\ReadingPlanRequest;
 use App\Models\Book;
 use App\Models\ReadingPlan;
-use App\Models\User;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
+use App\Services\ReadingPlanService;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\View\View;
 
 class ReadingPlanController extends Controller
 {
-    public function index(ReadingPlanRequest $request)
+    /**
+     * 本人の読書計画を期日順に表示する。
+     *
+     * @param  ReadingPlanRequest  $request  入力と認証情報を持つリクエスト
+     * @return View 表示する画面
+     */
+    public function index(ReadingPlanRequest $request): View
     {
         $currentStatus = $request->validated('status');
-        $readingPlans = $request->user()->readingPlans()->with('book')->when($currentStatus, fn ($q) => $q->where('status', $currentStatus))->orderBy('target_date')->orderBy('id')->paginate(10)->withQueryString();
+
+        /** @var LengthAwarePaginator $readingPlans */
+        $readingPlans = $request->user()->readingPlans()
+            ->with('book')
+            ->when($currentStatus, fn (Builder $query): Builder => $query->where('status', $currentStatus))
+            ->orderBy('target_date')
+            ->orderBy('id')
+            ->paginate(10);
+
+        $readingPlans->withQueryString();
 
         return view('reading-plans.index', compact('readingPlans', 'currentStatus'));
     }
 
-    public function create()
+    /**
+     * 読書計画の登録フォームを表示する。
+     *
+     * @return View 表示する画面
+     */
+    public function create(): View
     {
         return view('reading-plans.create', ['books' => Book::orderBy('title')->get()]);
     }
 
-    public function store(ReadingPlanRequest $request)
+    /**
+     * ユーザーをロックし、読書中の重複計画を防いで登録する。
+     *
+     * @param  ReadingPlanRequest  $request  入力と認証情報を持つリクエスト
+     * @param  ReadingPlanService  $plans  読書計画の業務処理サービス
+     * @return RedirectResponse 処理後の遷移先
+     */
+    public function store(ReadingPlanRequest $request, ReadingPlanService $plans): RedirectResponse
     {
-        DB::transaction(function () use ($request) {
-            User::whereKey($request->user()->id)->lockForUpdate()->firstOrFail();
-            $this->checkDuplicate($request->user(), (int) $request->validated('book_id'));
-            $request->user()->readingPlans()->create($request->validated() + ['status' => ReadingPlanStatus::InProgress]);
-        });
+        $plans->create($request->user(), $request->validated());
 
         return redirect()->route('reading-plans.index')->with('success', '読書計画を登録しました。');
     }
 
-    public function edit(ReadingPlan $plan)
+    /**
+     * 所有者と計画状態を確認して編集画面を表示する。
+     *
+     * @param  ReadingPlan  $plan  対象の読書計画
+     * @return View 表示する画面
+     */
+    public function edit(ReadingPlan $plan): View
     {
         $this->authorize('update', $plan);
 
         return view('reading-plans.edit', ['readingPlan' => $plan->load('book')]);
     }
 
-    public function update(ReadingPlanRequest $request, ReadingPlan $plan)
+    /**
+     * 重複を確認し、期限切れの計画は読書中に戻して期日を更新する。
+     *
+     * @param  ReadingPlanRequest  $request  入力と認証情報を持つリクエスト
+     * @param  ReadingPlan  $plan  対象の読書計画
+     * @param  ReadingPlanService  $plans  読書計画の業務処理サービス
+     * @return RedirectResponse 処理後の遷移先
+     */
+    public function update(ReadingPlanRequest $request, ReadingPlan $plan, ReadingPlanService $plans): RedirectResponse
     {
-        DB::transaction(function () use ($request, $plan) {
-            User::whereKey($request->user()->id)->lockForUpdate()->firstOrFail();
-            $plan = ReadingPlan::whereKey($plan->id)->lockForUpdate()->firstOrFail();
-            $this->authorize('update', $plan);
-            $this->checkDuplicate($request->user(), $plan->book_id, $plan->id);
-            $plan->update(['target_date' => $request->validated('target_date'), 'status' => ReadingPlanStatus::InProgress]);
-        });
+        $this->authorize('update', $plan);
+        $plans->update($request->user(), $plan, $request->validated('target_date'));
 
         return redirect()->route('reading-plans.index')->with('success', '期日を更新しました。');
     }
 
-    public function complete(ReadingPlan $plan)
+    /**
+     * 初回の読了時刻を保存し、再操作では変更しない。
+     *
+     * @param  ReadingPlan  $plan  対象の読書計画
+     * @param  ReadingPlanService  $plans  読書計画の業務処理サービス
+     * @return RedirectResponse 処理後の遷移先
+     */
+    public function complete(ReadingPlan $plan, ReadingPlanService $plans): RedirectResponse
     {
         $this->authorize('complete', $plan);
-        DB::transaction(function () use ($plan) {
-            $plan = ReadingPlan::whereKey($plan->id)->lockForUpdate()->firstOrFail();
-            if ($plan->status !== ReadingPlanStatus::Completed) {
-                $plan->update(['status' => ReadingPlanStatus::Completed, 'completed_at' => now()]);
-            }
-        });
+        $plans->complete($plan);
 
         return redirect()->route('reading-plans.index')->with('success', '読了しました。');
     }
 
-    public function destroy(ReadingPlan $plan)
+    /**
+     * 計画と関連通知を同一トランザクションで削除する。
+     *
+     * @param  ReadingPlan  $plan  対象の読書計画
+     * @param  ReadingPlanService  $plans  読書計画の業務処理サービス
+     * @return RedirectResponse 処理後の遷移先
+     */
+    public function destroy(ReadingPlan $plan, ReadingPlanService $plans): RedirectResponse
     {
         $this->authorize('delete', $plan);
-        DB::transaction(function () use ($plan) {
-            $plan = ReadingPlan::whereKey($plan->id)->lockForUpdate()->firstOrFail();
-            $plan->user->notifications()->where('data->reading_plan_id', $plan->id)->delete();
-            $plan->delete();
-        });
+        $plans->destroy($plan);
 
         return redirect()->route('reading-plans.index')->with('success', '読書計画を削除しました。');
-    }
-
-    private function checkDuplicate(User $user, int $bookId, ?int $except = null): void
-    {
-        $query = $user->readingPlans()->where('book_id', $bookId)->where('status', ReadingPlanStatus::InProgress);
-        if ($except) {
-            $query->whereKeyNot($except);
-        }
-        if ($query->exists()) {
-            throw ValidationException::withMessages([$except ? 'target_date' : 'book_id' => 'この書籍には読書中の計画がすでにあります。']);
-        }
     }
 }

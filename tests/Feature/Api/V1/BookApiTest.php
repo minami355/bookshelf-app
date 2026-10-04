@@ -53,6 +53,27 @@ class BookApiTest extends TestCase
             ->assertJsonPath('meta.per_page', 20);
     }
 
+    public function test_index_and_show_round_average_rating_to_one_decimal_place(): void
+    {
+        $book = Book::factory()->create();
+        Review::factory()->count(3)->for($book)->create(['rating' => 4]);
+        Review::factory()->for($book)->create(['rating' => 5]);
+
+        // 評価4・4・4・5の平均4.25を、小数第1位の4.3で返す。
+        $this->getJson('/api/v1/books')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $book->id)
+            ->assertJsonPath('data.0.average_rating', 4.3)
+            ->assertJsonPath('data.0.reviews_count', 4);
+
+        $this->getJson("/api/v1/books/{$book->id}")
+            ->assertOk()
+            ->assertJsonPath('data.id', $book->id)
+            ->assertJsonPath('data.average_rating', 4.3)
+            ->assertJsonPath('data.reviews_count', 4);
+    }
+
     public function test_index_supports_pagination_up_to_one_hundred(): void
     {
         Book::factory()->count(21)->create();

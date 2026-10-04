@@ -7,6 +7,7 @@ use App\Models\Review;
 use App\Models\ReviewLike;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class ReviewTest extends TestCase
@@ -58,6 +59,95 @@ class ReviewTest extends TestCase
         $response->assertSessionHasErrors('rating');
         $this->assertSame('この書籍にはすでにレビューを投稿しています。', session('errors')->first('rating'));
         $this->assertSame(1, Review::query()->whereBelongsTo($user)->whereBelongsTo($book)->count());
+    }
+
+    #[DataProvider('invalidReviewInputs')]
+    public function test_invalid_review_cannot_be_created(array $input, string $field, string $message): void
+    {
+        $user = User::factory()->create();
+        $book = Book::factory()->create();
+
+        $this->actingAs($user)->from(route('books.show', $book))
+            ->post(route('reviews.store', $book), array_replace([
+                'rating' => 3,
+                'comment' => '有効なコメントです。',
+            ], $input))
+            ->assertRedirect(route('books.show', $book))
+            ->assertSessionHasErrors([$field => $message]);
+
+        $this->assertDatabaseCount('reviews', 0);
+    }
+
+    #[DataProvider('invalidReviewInputs')]
+    public function test_invalid_review_update_preserves_original_values(array $input, string $field, string $message): void
+    {
+        $user = User::factory()->create();
+        $review = Review::factory()->for($user)->create([
+            'rating' => 4,
+            'comment' => '更新前のコメントです。',
+        ]);
+
+        $this->actingAs($user)->from(route('reviews.edit', $review))
+            ->put(route('reviews.update', $review), array_replace([
+                'rating' => 3,
+                'comment' => '更新後のコメントです。',
+            ], $input))
+            ->assertRedirect(route('reviews.edit', $review))
+            ->assertSessionHasErrors([$field => $message]);
+
+        $this->assertDatabaseHas('reviews', [
+            'id' => $review->id,
+            'rating' => 4,
+            'comment' => '更新前のコメントです。',
+        ]);
+    }
+
+    public static function invalidReviewInputs(): array
+    {
+        return [
+            'rating below minimum' => [['rating' => 0], 'rating', '評価は1から5の間で選択してください。'],
+            'rating above maximum' => [['rating' => 6], 'rating', '評価は1から5の間で選択してください。'],
+            'fractional rating' => [['rating' => 3.5], 'rating', '評価は整数で入力してください。'],
+            'empty comment' => [['comment' => ''], 'comment', 'コメントは必須です。'],
+            'comment above maximum length' => [['comment' => str_repeat('あ', 1001)], 'comment', 'コメントは1000文字以内で入力してください。'],
+        ];
+    }
+
+    #[DataProvider('validBoundaryRatings')]
+    public function test_review_can_be_created_and_updated_at_validation_boundaries(int $rating): void
+    {
+        $user = User::factory()->create();
+        $book = Book::factory()->create();
+        $comment = str_repeat('あ', 1000);
+
+        $this->actingAs($user)->post(route('reviews.store', $book), [
+            'rating' => $rating,
+            'comment' => $comment,
+        ])->assertRedirect(route('books.show', $book))->assertSessionHasNoErrors();
+
+        $review = Review::query()->whereBelongsTo($user)->whereBelongsTo($book)->firstOrFail();
+        $this->assertSame($rating, (int) $review->rating);
+        $this->assertSame($comment, $review->comment);
+
+        $updatedComment = str_repeat('い', 1000);
+        $updatedRating = $rating === 1 ? 5 : 1;
+
+        $this->actingAs($user)->put(route('reviews.update', $review), [
+            'rating' => $updatedRating,
+            'comment' => $updatedComment,
+        ])->assertRedirect(route('books.show', $book))->assertSessionHasNoErrors();
+
+        $review->refresh();
+        $this->assertSame($updatedRating, (int) $review->rating);
+        $this->assertSame($updatedComment, $review->comment);
+    }
+
+    public static function validBoundaryRatings(): array
+    {
+        return [
+            'minimum rating' => [1],
+            'maximum rating' => [5],
+        ];
     }
 
     public function test_only_author_can_edit_update_or_delete_review(): void

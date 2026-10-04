@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Book;
 use App\Models\Genre;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -110,9 +111,9 @@ class BookSeeder extends Seeder
             $bookData['image_url'] =
                 'https://placehold.co/200x300/e2e8f0/475569?text='.($index + 1);
 
-            $book = $users->random()->books()->firstOrCreate(
+            $book = Book::firstOrCreate(
                 ['isbn' => $bookData['isbn']],
-                $bookData
+                $bookData + ['user_id' => $users->random()->id]
             );
 
             $genreIds = Genre::whereIn('name', $genreNames)->pluck('id');

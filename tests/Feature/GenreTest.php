@@ -71,7 +71,29 @@ class GenreTest extends TestCase
 
         $this->actingAs($user)->delete(route('genres.destroy', $genre))
             ->assertRedirect(route('genres.index'))
-            ->assertSessionHas('error', 'このジャンルには書籍が紐づいているため削除できません。');
+            ->assertSessionHas('error', 'このジャンルには書籍が紐付いているため削除できません。');
         $this->assertDatabaseHas('genres', ['id' => $genre->id]);
+    }
+
+    public function test_genre_name_length_boundary_on_create_and_update(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $this->post('/genres', ['name' => str_repeat('あ', 255)])->assertSessionHasNoErrors();
+        $genre = Genre::firstOrFail();
+        $this->post('/genres', ['name' => str_repeat('あ', 256)])->assertSessionHasErrors('name');
+        $this->put('/genres/'.$genre->id, ['name' => str_repeat('い', 255)])->assertSessionHasNoErrors();
+        $this->put('/genres/'.$genre->id, ['name' => str_repeat('い', 256)])->assertSessionHasErrors('name');
+    }
+
+    public function test_missing_genre_and_review_return_404(): void
+    {
+        $this->actingAs(User::factory()->create());
+        foreach (['/genres/999999', '/genres/999999/edit', '/reviews/999999/edit'] as $url) {
+            $this->get($url)->assertNotFound();
+        }
+        foreach (['/genres/999999', '/reviews/999999'] as $url) {
+            $this->put($url, [])->assertNotFound();
+            $this->delete($url)->assertNotFound();
+        }
     }
 }

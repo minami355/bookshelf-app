@@ -14,6 +14,11 @@ class Genre extends Model
         'name',
     ];
 
+    /**
+     * 関連する書籍のリレーションを定義する。
+     *
+     * @return BelongsToMany 関連データを取得するリレーション
+     */
     public function books(): BelongsToMany
     {
         return $this->belongsToMany(Book::class, 'book_genre')

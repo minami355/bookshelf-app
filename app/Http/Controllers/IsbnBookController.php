@@ -11,6 +11,13 @@ use RuntimeException;
 
 class IsbnBookController extends Controller
 {
+    /**
+     * ISBNから書籍情報を取得してJSONを返す。
+     *
+     * @param  IsbnBookRequest  $request  入力と認証情報を持つリクエスト
+     * @param  GoogleBooksService  $service  外部書籍検索サービス
+     * @return JsonResponse 処理結果のJSONレスポンス
+     */
     public function __invoke(IsbnBookRequest $request, GoogleBooksService $service): JsonResponse
     {
         try {
