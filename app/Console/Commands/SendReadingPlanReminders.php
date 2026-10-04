@@ -26,10 +26,11 @@ class SendReadingPlanReminders extends Command
     {
         $today = Carbon::today('Asia/Tokyo');
         ReadingPlan::where('status', ReadingPlanStatus::InProgress)->whereDate('target_date', '<', $today->toDateString())->update(['status' => ReadingPlanStatus::Expired]);
-        foreach ([['three_days_before', 3, ReadingPlanStatus::InProgress], ['on_due_date', 0, ReadingPlanStatus::InProgress], ['three_days_after', -3, ReadingPlanStatus::Expired]] as [$timing,$offset,$status]) {
+        collect([['three_days_before', 3, ReadingPlanStatus::InProgress], ['on_due_date', 0, ReadingPlanStatus::InProgress], ['three_days_after', -3, ReadingPlanStatus::Expired]])->each(function (array $reminder) use ($today): void {
+            [$timing, $offset, $status] = $reminder;
             $date = $today->copy()->addDays($offset)->toDateString();
             ReadingPlan::where('status', $status)->whereDate('target_date', $date)->select('id')->chunkById(100, function (Collection $plans) use ($timing, $status, $date): void {
-                foreach ($plans as $candidate) {
+                $plans->each(function (ReadingPlan $candidate) use ($timing, $status, $date): void {
                     DB::transaction(function () use ($candidate, $timing, $status, $date): void {
                         $plan = ReadingPlan::whereKey($candidate->id)->lockForUpdate()->first();
                         if (! $plan || $plan->status !== $status || $plan->target_date->toDateString() !== $date) {
@@ -40,9 +41,9 @@ class SendReadingPlanReminders extends Command
                             Notification::send($user, new ReadingPlanReminder($plan, $timing));
                         }
                     });
-                }
+                });
             });
-        }
+        });
         $this->info('読書計画の状態更新と通知処理が完了しました。');
 
         return self::SUCCESS;

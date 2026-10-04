@@ -193,7 +193,7 @@ erDiagram
 Docker、Docker Composeが利用できる環境を前提とします。
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/minami355/bookshelf-app.git
 cd bookshelf-app
 cp .env.example .env
 ```
@@ -209,7 +209,7 @@ DB_USERNAME=sail
 DB_PASSWORD=password
 ```
 
-Docker経由で依存パッケージを準備した後、Sailを起動します。
+Docker経由で依存パッケージを準備した後、Sailを起動します。ここで使用する`laravelsail/php82-composer`は、初回の`composer install`でSailを導入するための一時的なComposer実行環境です。アプリケーション本体は`compose.yaml`で定義されたPHP 8.5のSailコンテナ上で動作します。
 
 ```bash
 docker run --rm \
@@ -219,10 +219,24 @@ docker run --rm \
     laravelsail/php82-composer:latest \
     composer install --ignore-platform-reqs
 ./vendor/bin/sail up -d
-./vendor/bin/sail artisan key:generate
-./vendor/bin/sail npm install
-./vendor/bin/sail npm run dev
 ```
+
+毎回`./vendor/bin/sail`と入力せず、`sail`だけでコマンドを実行したい場合は、Sail起動後に次のエイリアスを設定します（zshの場合）。
+
+```bash
+echo 'alias sail="[ -f sail ] && bash sail || bash vendor/bin/sail"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+設定後、アプリケーションキーの生成とフロントエンドのセットアップを行います。
+
+```bash
+sail artisan key:generate
+sail npm install
+sail npm run dev
+```
+
+エイリアスを設定しない場合は、`sail`を`./vendor/bin/sail`に読み替えて実行してください。
 
 別のターミナルで、テーブル作成と初期データ投入を実行します。
 
@@ -283,8 +297,6 @@ docker run --rm \
 読了冊数はレビューした書籍を基準とし、読書計画の完了件数は含めません。月別集計は対象外です。既存のレポート用Bladeを利用し、集計クエリと書籍のEager Loadingでデータを取得します。
 
 レポートのテストは`./vendor/bin/sail artisan test --filter=ReadingReportTest`で実行できます。本人以外のレビューの除外、全期間集計、空の状態、順位・同率時の順序、最大5件、複数ジャンル、未認証時のリダイレクトを検証します。
-
-2026-09-29のIssue #12実装後、PHPテスト全64件・439アサーションが成功しました（SQLiteインメモリDB）。レポート専用テストは5件・26アサーションです。
 
 ## 書籍の検索・ソート・ISBN検索（Issue #11）
 
@@ -373,7 +385,7 @@ Seederは空のDBへの初回投入を前提とします。既存データがあ
 
 今回、既存Bladeに一覧のページ移動リンク・状態エラー表示・通知から読書計画へのリンクを追加しています。
 
-検証結果：PHPテスト全72件・516アサーション成功（SQLiteインメモリDB）。応用Seeder、通知の重複防止、所有者認可、日次スケジュールを含みます。Pint整形とViteビルドも確認済みです。開発用DBへのマイグレーション・シード投入、常駐Schedulerの起動は行っていません。
+応用Seeder、通知の重複防止、所有者認可、日次スケジュールは自動テストの対象です。開発用DBへのマイグレーション・シード投入、常駐Schedulerの起動確認とは分けて検証します。
 
 ## 公開API
 
@@ -447,7 +459,7 @@ ISBNフォームのJavaScriptテストは次のコマンドで実行します。
 ./vendor/bin/sail artisan test --coverage
 ```
 
-2026-09-29のIssue #11実装後、基本機能・応用API・Web検索・ISBN検索を含むPHPテスト全59件・413アサーションが成功しました（SQLiteインメモリDB）。Google Books APIはHTTPモックで正常応答・該当なし・通信失敗を検証しています。フォーム反映のJavaScriptテスト3件、Pintによる変更PHPファイルの整形確認、Viteビルドも成功しました。実APIとの疎通、開発用MySQLの変更、カバレッジ測定は今回行っていません。
+Google Books APIはHTTPモックで正常応答・該当なし・通信失敗を検証しています。実APIとの疎通や開発用MySQLの変更は行いません。
 
 ### 応用機能テスト（2026-09-30）
 
@@ -467,7 +479,14 @@ ISBNフォームのJavaScriptテストは次のコマンドで実行します。
 
 他人の通知を既読にする操作は要件に合わせて403へ修正しました。存在しない通知は404です。
 
-検証結果：PHP **81件・600アサーション成功**、ISBNフォームのJavaScript **3件成功**。変更したPHPファイルはPintで整形しました。PHPテストはSQLiteインメモリDBを使用し、Google Books APIへの実通信は行っていません。Schedulerは設定をテストしており、常駐プロセスの稼働確認とは別です。今回、Bladeファイル・開発用DBは変更していません。
+### 最新検証結果（2026-10-04）
+
+- PHPテスト：**99件・709アサーション成功**
+- コードカバレッジ：**93.3%**
+- ISBNフォームのJavaScriptテスト：**3件成功**
+- Laravel Pint：**137ファイル合格**
+
+PHPテストはSQLiteインメモリDBを使用し、Google Books APIへの実通信は行っていません。Schedulerは設定をテストしており、常駐プロセスの稼働確認とは別です。
 
 ## コード整形
 
