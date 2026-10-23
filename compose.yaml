@@ -1,11 +1,9 @@
 services:
   laravel.test:
     build:
-      context: "./vendor/laravel/sail/runtimes/8.5"
+      context: "./docker/php"
       dockerfile: Dockerfile
-      args:
-        WWWGROUP: "${WWWGROUP}"
-    image: "sail-8.5/app"
+    image: "bookshelf-php:8.5.12"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
