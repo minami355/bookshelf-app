@@ -33,11 +33,11 @@ class SendReadingPlanReminders extends Command
                 $plans->each(function (ReadingPlan $candidate) use ($timing, $status, $date): void {
                     DB::transaction(function () use ($candidate, $timing, $status, $date): void {
                         $plan = ReadingPlan::whereKey($candidate->id)->lockForUpdate()->first();
-                        if (! $plan || $plan->status !== $status || $plan->target_date->toDateString() !== $date) {
+                        if (!$plan || $plan->status !== $status || $plan->target_date->toDateString() !== $date) {
                             return;
                         }
                         $user = $plan->user;
-                        if (! $user->notifications()->where('type', ReadingPlanReminder::class)->where('data->reading_plan_id', $plan->id)->where('data->timing', $timing)->exists()) {
+                        if (!$user->notifications()->where('type', ReadingPlanReminder::class)->where('data->reading_plan_id', $plan->id)->where('data->timing', $timing)->exists()) {
                             Notification::send($user, new ReadingPlanReminder($plan, $timing));
                         }
                     });

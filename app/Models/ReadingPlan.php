@@ -6,11 +6,18 @@ use App\Enums\ReadingPlanStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property \Illuminate\Support\Carbon $target_date
+ */
 class ReadingPlan extends Model
 {
     protected $fillable = ['book_id', 'target_date', 'status', 'completed_at'];
 
-    protected $casts = ['target_date' => 'date', 'completed_at' => 'datetime', 'status' => ReadingPlanStatus::class];
+    protected $casts = [
+        'target_date' => 'date',
+        'completed_at' => 'datetime',
+        'status' => ReadingPlanStatus::class,
+    ];
 
     /**
      * 関連するユーザーのリレーションを定義する。
